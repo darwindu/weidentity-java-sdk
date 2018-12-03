@@ -19,8 +19,9 @@
 
 package com.webank.weid.contract.deploy;
 
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -69,12 +70,12 @@ public class DeployContract {
     /**
      * The context.
      */
-    protected static ApplicationContext context;
+    protected static final ApplicationContext context;
 
     /**
      * The credentials.
      */
-    protected static Credentials credentials;
+    private static Credentials credentials;
 
     /**
      * web3j object.
@@ -156,12 +157,12 @@ public class DeployContract {
     }
 
     private static void deployContract() {
-        String weIdContractAddress = deployWeIDContract();
+        String weIdContractAddress = deployWeIdContract();
         String authorityIssuerDataAddress = deployAuthorityIssuerContracts();
         deployCptContracts(authorityIssuerDataAddress, weIdContractAddress);
     }
 
-    private static String deployWeIDContract() {
+    private static String deployWeIdContract() {
         if (null == web3j) {
             loadConfig();
         }
@@ -333,10 +334,9 @@ public class DeployContract {
 
     private static void writeAddressToFile(String contractName, String contractAddress) {
 
-        FileWriter fileWritter = null;
+        OutputStreamWriter ow = null;
         try {
-
-            fileWritter = new FileWriter(filePath, true);
+            ow = new OutputStreamWriter(new FileOutputStream(filePath, true), WeIdConstant.UTF_8);
             String content =
                 new StringBuffer()
                     .append(contractName)
@@ -344,14 +344,14 @@ public class DeployContract {
                     .append(contractAddress)
                     .append("\r\n")
                     .toString();
-            fileWritter.write(content);
-            fileWritter.close();
+            ow.write(content);
+            ow.close();
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (null != fileWritter) {
+            if (null != ow) {
                 try {
-                    fileWritter.close();
+                    ow.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

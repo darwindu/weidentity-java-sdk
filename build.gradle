@@ -94,7 +94,7 @@ List jackson = [
 dependencies {
     compile logger, spring, lombok, apache_commons, jackson
     runtime logger, spring, lombok, apache_commons, jackson
-    testCompile logger, spring, lombok, junit
+    testCompile logger, spring, lombok, junit, jmockit
     compile files('lib/web3sdk.jar')
     runtime files('lib/web3sdk.jar')
 }
@@ -151,8 +151,12 @@ jar {
 }
 
 checkstyle {
+    ignoreFailures false
     showViolations true
     toolVersion '8.12'
+    configProperties.projectDir = project.projectDir
+    checkstyleMain.configFile = new File(project.projectDir, '/config/checkstyle/webank_google_checks.xml')
+    checkstyleTest.configFile = new File(project.projectDir, '/config/checkstyle/webank_google_checks.xml')
 }
 
 tasks.withType(Checkstyle) {
@@ -174,11 +178,18 @@ spotbugs {
 
 tasks.withType(com.github.spotbugs.SpotBugsTask) {
     // configure automatically generated tasks
-    include '**/*.java'
-    exclude '**/contract/*.java'
+    //include '**/*.java'
+    //exclude '**/contract/*.java'
     reports {
         xml.enabled false
         html.enabled true
         html.stylesheet resources.text.fromFile('config/spotbugs.xsl')
     }
+}
+
+spotbugs {
+    // (Optional)
+    // http://spotbugs.readthedocs.io/en/latest/filter.html
+    // Exclude specific language like kotlin.
+    excludeFilter = file("${project.rootDir}/config/spotbugs/spotbugs_filter.xml")
 }

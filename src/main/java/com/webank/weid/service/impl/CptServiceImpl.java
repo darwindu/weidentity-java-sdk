@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import com.google.common.base.Splitter;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.bcos.web3j.abi.datatypes.Address;
@@ -43,7 +44,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import com.google.common.base.Splitter;
 import com.webank.weid.config.ContractConfig;
 import com.webank.weid.constant.ErrorCode;
 import com.webank.weid.constant.WeIdConstant;
@@ -226,11 +226,11 @@ public class CptServiceImpl extends BaseService implements CptService {
                     DataTypetUtils.bytes32DynamicArrayToStringArrayWithoutTrim(
                         (DynamicArray<Bytes32>) typeList.get(3)
                     );
-                String jsonSchema = StringUtils.EMPTY;
+                StringBuffer jsonSchema = new StringBuffer();
                 for (int i = 0; i < jsonSchemaArray.length; i++) {
-                    jsonSchema = jsonSchema + jsonSchemaArray[i];
+                    jsonSchema.append(jsonSchemaArray[i]);
                 }
-                cpt.setCptJsonSchema(jsonSchema.trim());
+                cpt.setCptJsonSchema(jsonSchema.toString().trim());
 
                 int v = DataTypetUtils.uint8ToInt((Uint8) typeList.get(4));
                 byte[] r = DataTypetUtils.bytes32ToBytesArray((Bytes32) typeList.get(5));
@@ -240,7 +240,8 @@ public class CptServiceImpl extends BaseService implements CptService {
                 String cptSignature =
                     new String(
                         SignatureUtils.base64Encode(
-                            SignatureUtils.simpleSignatureSerialization(signatureData)));
+                            SignatureUtils.simpleSignatureSerialization(signatureData)),
+                            WeIdConstant.UTF_8);
                 cpt.setCptSignature(cptSignature);
 
                 responseData.setResult(cpt);
@@ -435,7 +436,7 @@ public class CptServiceImpl extends BaseService implements CptService {
     private ResponseData<CptBaseInfo> validateUpdateCptArgs(
         UpdateCptArgs args, ResponseData<CptBaseInfo> responseData) throws Exception {
 
-    	ResponseData<CptBaseInfo> responseDataReq = responseData;
+        ResponseData<CptBaseInfo> responseDataReq = responseData;
         if (args == null) {
             logger.error("input UpdateCptArgs is null");
             responseDataReq = new ResponseData<>(null, ErrorCode.ILLEGAL_INPUT);

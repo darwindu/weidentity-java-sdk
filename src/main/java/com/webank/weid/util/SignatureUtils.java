@@ -26,6 +26,8 @@ import org.bcos.web3j.crypto.Keys;
 import org.bcos.web3j.crypto.Sign;
 import org.bouncycastle.util.encoders.Base64;
 
+import com.webank.weid.constant.WeIdConstant;
+
 /**
  * The Signature related Utils class. Based on ECDSA Asymmetric Encryption + SHA256 Hash Algorithm.
  *
@@ -62,7 +64,7 @@ public class SignatureUtils {
      */
     public static Sign.SignatureData signMessage(String message, ECKeyPair keyPair)
         throws Exception {
-        return Sign.signMessage(HashUtils.sha3(message.getBytes()), keyPair);
+        return Sign.signMessage(HashUtils.sha3(message.getBytes(WeIdConstant.UTF_8)), keyPair);
     }
 
     /**
@@ -78,7 +80,7 @@ public class SignatureUtils {
         throws Exception {
         BigInteger privateKey = new BigInteger(privateKeyString);
         ECKeyPair keyPair = new ECKeyPair(privateKey, publicKeyFromPrivate(privateKey));
-        return Sign.signMessage(HashUtils.sha3(message.getBytes()), keyPair);
+        return Sign.signMessage(HashUtils.sha3(message.getBytes(WeIdConstant.UTF_8)), keyPair);
     }
 
     /**
@@ -89,9 +91,13 @@ public class SignatureUtils {
      * @return publicKey
      * @throws Exception the exception
      */
-    public static BigInteger signatureToPublicKey(String message, Sign.SignatureData signatureData)
+    public static BigInteger signatureToPublicKey(
+        String message,
+        Sign.SignatureData signatureData)
         throws Exception {
-        return Sign.signedMessageToKey(HashUtils.sha3(message.getBytes()), signatureData);
+
+        return Sign.signedMessageToKey(HashUtils.sha3(message.getBytes(WeIdConstant.UTF_8)),
+                signatureData);
     }
 
     /**
@@ -99,7 +105,7 @@ public class SignatureUtils {
      *
      * @param message This should be from the same plain-text source with the signature Data.
      * @param signatureData This must be in SignatureData. Caller should call
-     * simpleSignatureDeserialization.
+     *      impleSignatureDeserialization.
      * @param publicKey This must be in BigInteger. Caller should convert it to BigInt.
      * @return true if yes, false otherwise
      * @throws Exception the exception
@@ -231,7 +237,7 @@ public class SignatureUtils {
      * @return the sign. signature data
      */
     public static Sign.SignatureData rawSignatureDeserialization(int v, byte[] r, byte[] s) {
-        byte vByte = (byte) v;
-        return new Sign.SignatureData(vByte, r, s);
+        byte valueByte = (byte) v;
+        return new Sign.SignatureData(valueByte, r, s);
     }
 }

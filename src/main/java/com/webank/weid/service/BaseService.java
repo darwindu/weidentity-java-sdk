@@ -50,9 +50,9 @@ public abstract class BaseService {
 
     private static final Logger logger = LoggerFactory.getLogger(BaseService.class);
 
-    protected static ApplicationContext context;
+    protected static final ApplicationContext context;
 
-    protected static Credentials credentials;
+    private static Credentials credentials;
 
     private static Web3j web3j;
 
@@ -165,12 +165,13 @@ public abstract class BaseService {
         if (null == web3j || !initWeb3j()) {
             throw new InitWeb3jException();
         }
+
         try {
             // load contract
             contract = loadContract(contractAddress, credentials, cls);
             logger.info(cls.getSimpleName() + " init succ");
         } catch (Exception e) {
-            logger.error("load contract :{} failed. Error message is :{}",
+            logger.error("Exception. load contract :{} failed. Error message is :{}",
                 cls.getSimpleName(), e);
             throw new LoadContractException();
         }
@@ -199,7 +200,7 @@ public abstract class BaseService {
             contract = loadContract(contractAddress, credentials, cls);
             logger.info(cls.getSimpleName() + " init succ");
 
-        } catch (Exception e) {
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             logger.error("load contract :{} failed. Error message is :{}",
                 cls.getSimpleName(), e);
             throw new LoadContractException();

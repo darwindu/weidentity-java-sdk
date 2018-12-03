@@ -22,13 +22,14 @@ package com.webank.weid.exception;
 import com.webank.weid.constant.ErrorCode;
 
 /**
+ * WeIdBase Exception.
  * @author tonychen Base Exception for WeIdentity Project
  */
 @SuppressWarnings("serial")
 public class WeIdBaseException extends RuntimeException {
 
     /**
-     * constructor
+     * constructor.
      *
      * @param msg exception message
      */
@@ -37,7 +38,7 @@ public class WeIdBaseException extends RuntimeException {
     }
 
     /**
-     * constructor
+     * constructor.
      *
      * @param msg exception message
      */
@@ -46,7 +47,7 @@ public class WeIdBaseException extends RuntimeException {
     }
 
     /**
-     * get associated error code
+     * get associated error code.
      */
     public ErrorCode getErrorCode() {
         return ErrorCode.BASE_ERROR;
