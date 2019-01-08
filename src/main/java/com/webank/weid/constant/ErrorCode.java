@@ -57,7 +57,7 @@ public enum ErrorCode {
     /**
      * cpt event log is null.
      */
-    CPT_EVENT_LOG_NULL(500304, "cpt event log is null."),
+    CPT_EVENT_LOG_NULL(500305, "cpt event log is null."),
 
     /**
      * The cpt json schema invalid.
