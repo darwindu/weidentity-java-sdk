@@ -1,6 +1,6 @@
 package com.webank.weid.constant;
 
-public class JsonSchemaConstant {
+public final class JsonSchemaConstant {
 
     public static final String SCHEMA_KEY = "$schema";
 

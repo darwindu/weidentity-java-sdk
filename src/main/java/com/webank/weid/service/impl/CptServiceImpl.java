@@ -139,22 +139,25 @@ public class CptServiceImpl extends BaseService implements CptService {
             );
 
             if (CollectionUtils.isEmpty(event)) {
+                logger.error("[registerCpt] event is empty");
                 return new ResponseData<>(null, ErrorCode.CPT_EVENT_LOG_NULL);
             }
 
             if (DataTypetUtils.uint256ToInt(event.get(0).retCode)
                 == ErrorCode.CPT_ID_AUTHORITY_ISSUER_EXCEED_MAX.getCode()) {
+                logger.error("[registerCpt] cptId limited max value.");
                 return new ResponseData<>(null, ErrorCode.CPT_ID_AUTHORITY_ISSUER_EXCEED_MAX);
             }
 
             if (DataTypetUtils.uint256ToInt(event.get(0).retCode)
                 == ErrorCode.CPT_PUBLISHER_NOT_EXIST.getCode()) {
+                logger.error("[registerCpt] publisher does not exist.");
                 return new ResponseData<>(null, ErrorCode.CPT_PUBLISHER_NOT_EXIST);
             }
-
             CptBaseInfo result = new CptBaseInfo();
             result.setCptId(DataTypetUtils.uint256ToInt(event.get(0).cptId));
             result.setCptVersion(DataTypetUtils.int256ToInt(event.get(0).cptVersion));
+
             responseData.setResult(result);
             return responseData;
         } catch (InterruptedException | ExecutionException e) {
@@ -314,17 +317,19 @@ public class CptServiceImpl extends BaseService implements CptService {
                 transactionReceipt
             );
             if (CollectionUtils.isEmpty(event)) {
+                logger.error("[updateCpt] event is empty, cptId:{}.", args.getCptId());
                 return new ResponseData<>(null, ErrorCode.CPT_EVENT_LOG_NULL);
             }
 
             if (DataTypetUtils.uint256ToInt(event.get(0).retCode)
                 == ErrorCode.CPT_NOT_EXISTS.getCode()) {
-                logger.error("Update cpt id : {} does not exist.", args.getCptId());
+                logger.error("[updateCpt] cpt id : {} does not exist.", args.getCptId());
                 return new ResponseData<>(null, ErrorCode.CPT_NOT_EXISTS);
             }
 
             if (DataTypetUtils.uint256ToInt(event.get(0).retCode)
                 == ErrorCode.CPT_PUBLISHER_NOT_EXIST.getCode()) {
+                logger.error("[updateCpt] publisher does not exist, cptId:{}.", args.getCptId());
                 return new ResponseData<>(null, ErrorCode.CPT_PUBLISHER_NOT_EXIST);
             }
 
