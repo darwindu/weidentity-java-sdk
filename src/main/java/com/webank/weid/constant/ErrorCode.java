@@ -50,9 +50,19 @@ public enum ErrorCode {
     CPT_PUBLISHER_NOT_EXIST(500303, "cpt publisher does not exist"),
 
     /**
+     * cpt event log is null.
+     */
+    CPT_EVENT_LOG_NULL(500304, "cpt event log is null."),
+
+    /**
      * The cpt json schema invalid.
      */
     CPT_JSON_SCHEMA_INVALID(100301, "cpt json schema is invalid"),
+
+    /**
+     * The cpt json schema null.
+     */
+    CPT_JSON_SCHEMA_NULL(100302, "cpt json schema is null"),
 
     /**
      * Credential main error code.

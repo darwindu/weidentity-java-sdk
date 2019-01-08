@@ -19,6 +19,8 @@
 
 package com.webank.weid.protocol.request;
 
+import java.util.LinkedHashMap;
+
 import lombok.Data;
 
 import com.webank.weid.protocol.base.WeIdPrivateKey;
@@ -34,7 +36,7 @@ public class RegisterCptArgs {
     /**
      * Required: The json schema content defined for this CPT.
      */
-    private String cptJsonSchema;
+    private LinkedHashMap<String, Object> cptJsonSchema;
 
     /**
      * Required: The weIdentity DID of the publisher who register this CPT.

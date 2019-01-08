@@ -30,6 +30,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -40,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import com.webank.weid.common.BeanUtil;
 import com.webank.weid.common.PasswordKey;
+import com.webank.weid.constant.JsonSchemaConstant;
 import com.webank.weid.protocol.base.AuthorityIssuer;
 import com.webank.weid.protocol.base.CptBaseInfo;
 import com.webank.weid.protocol.base.Credential;
@@ -94,7 +96,7 @@ public class TestBaseUtil {
         createCredentialArgs.setWeIdPrivateKey(new WeIdPrivateKey());
         createCredentialArgs.getWeIdPrivateKey()
             .setPrivateKey(createWeId.getUserWeIdPrivateKey().getPrivateKey());
-        createCredentialArgs.setClaim(TestData.schemaData);
+        createCredentialArgs.setClaim(buildCptJsonSchemaData());
 
         return createCredentialArgs;
     }
@@ -119,7 +121,7 @@ public class TestBaseUtil {
         CptBaseInfo cptBaseInfo) {
 
         UpdateCptArgs updateCptArgs = new UpdateCptArgs();
-        updateCptArgs.setCptJsonSchema(TestData.schema);
+        updateCptArgs.setCptJsonSchema(buildCptJsonSchema());
         updateCptArgs.setCptPublisher(createWeId.getWeId());
         updateCptArgs.setCptPublisherPrivateKey(new WeIdPrivateKey());
         updateCptArgs.getCptPublisherPrivateKey()
@@ -135,13 +137,63 @@ public class TestBaseUtil {
     public static RegisterCptArgs buildRegisterCptArgs(CreateWeIdDataResult createWeId) {
 
         RegisterCptArgs registerCptArgs = new RegisterCptArgs();
-        registerCptArgs.setCptJsonSchema(TestData.schema);
+        registerCptArgs.setCptJsonSchema(buildCptJsonSchema());
         registerCptArgs.setCptPublisher(createWeId.getWeId());
         registerCptArgs.setCptPublisherPrivateKey(new WeIdPrivateKey());
         registerCptArgs.getCptPublisherPrivateKey()
             .setPrivateKey(createWeId.getUserWeIdPrivateKey().getPrivateKey());
 
         return registerCptArgs;
+    }
+
+    /**
+     * build cpt json schema.
+     * @return LinkedHashMap
+     */
+    public static LinkedHashMap<String, Object> buildCptJsonSchema() {
+
+        LinkedHashMap<String, Object> cptJsonSchemaNew = new LinkedHashMap<String, Object>();
+        cptJsonSchemaNew.put(JsonSchemaConstant.SCHEMA_KEY, JsonSchemaConstant.SCHEMA_VALUE);
+        cptJsonSchemaNew.put(JsonSchemaConstant.TYPE_KEY, JsonSchemaConstant.DATE_TYPE_OBJECT);
+        cptJsonSchemaNew.put(JsonSchemaConstant.TITLE_KEY, "cpt template");
+        cptJsonSchemaNew.put(JsonSchemaConstant.DESCRIPTION_KEY, "this is a cpt template");
+
+        LinkedHashMap<String, Object> propertitesMap1 = new LinkedHashMap<String, Object>();
+        propertitesMap1.put(JsonSchemaConstant.TYPE_KEY, JsonSchemaConstant.DATE_TYPE_STRING);
+        propertitesMap1.put(JsonSchemaConstant.DESCRIPTION_KEY, "this is name");
+
+        String[] genderEnum = {"F", "M"};
+        LinkedHashMap<String, Object> propertitesMap2 = new LinkedHashMap<String, Object>();
+        propertitesMap2.put(JsonSchemaConstant.TYPE_KEY, JsonSchemaConstant.DATE_TYPE_STRING);
+        propertitesMap2.put(JsonSchemaConstant.DATE_TYPE_ENUM, genderEnum);
+
+        LinkedHashMap<String, Object> propertitesMap3 = new LinkedHashMap<String, Object>();
+        propertitesMap3.put(JsonSchemaConstant.TYPE_KEY, JsonSchemaConstant.DATE_TYPE_NUMBER);
+        propertitesMap3.put(JsonSchemaConstant.DESCRIPTION_KEY, "this is age");
+
+        LinkedHashMap<String, Object> cptJsonSchema = new LinkedHashMap<String, Object>();
+        cptJsonSchema.put("name", propertitesMap1);
+        cptJsonSchema.put("gender", propertitesMap2);
+        cptJsonSchema.put("age", propertitesMap3);
+        cptJsonSchemaNew.put(JsonSchemaConstant.PROPERTIES_KEY, cptJsonSchema);
+
+        String[] genderRequired = {"name", "gender"};
+        cptJsonSchemaNew.put(JsonSchemaConstant.REQUIRED_KEY, genderRequired);
+
+        return cptJsonSchemaNew;
+    }
+
+    /**
+     * build cpt json schemaData.
+     * @return LinkedHashMap
+     */
+    public static LinkedHashMap<String, Object> buildCptJsonSchemaData() {
+
+        LinkedHashMap<String, Object> cptJsonSchemaData = new LinkedHashMap<String, Object>();
+        cptJsonSchemaData.put("name", "zhang san");
+        cptJsonSchemaData.put("gender", "F");
+        cptJsonSchemaData.put("age", 18);
+        return cptJsonSchemaData;
     }
 
     /**

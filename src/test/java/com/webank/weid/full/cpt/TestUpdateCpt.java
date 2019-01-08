@@ -20,12 +20,10 @@
 package com.webank.weid.full.cpt;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.concurrent.Future;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import mockit.Mock;
 import mockit.MockUp;
 import org.bcos.web3j.abi.datatypes.Address;
@@ -34,6 +32,7 @@ import org.bcos.web3j.abi.datatypes.generated.Bytes32;
 import org.bcos.web3j.abi.datatypes.generated.Int256;
 import org.bcos.web3j.abi.datatypes.generated.Uint256;
 import org.bcos.web3j.abi.datatypes.generated.Uint8;
+import org.bcos.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -42,10 +41,10 @@ import org.slf4j.LoggerFactory;
 import com.webank.weid.common.BeanUtil;
 import com.webank.weid.common.PasswordKey;
 import com.webank.weid.constant.ErrorCode;
+import com.webank.weid.constant.JsonSchemaConstant;
 import com.webank.weid.contract.CptController;
 import com.webank.weid.full.TestBaseServcie;
 import com.webank.weid.full.TestBaseUtil;
-import com.webank.weid.full.TestData;
 import com.webank.weid.protocol.base.Cpt;
 import com.webank.weid.protocol.base.CptBaseInfo;
 import com.webank.weid.protocol.request.UpdateCptArgs;
@@ -60,7 +59,7 @@ import com.webank.weid.util.WeIdUtils;
  *
  */
 public class TestUpdateCpt extends TestBaseServcie {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(TestUpdateCpt.class);
 
     @Override
@@ -72,7 +71,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         }
     }
 
-    /** 
+    /**
      * case： cpt updateCpt success.
      */
     @Test
@@ -92,7 +91,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNotNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： updateCptArgs is null.
      */
     @Test
@@ -106,7 +105,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： cptId is null.
      */
     @Test
@@ -124,7 +123,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： cptId is minus number.
      */
     @Test
@@ -142,7 +141,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： cptId is not exists.
      */
     @Test
@@ -160,7 +159,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： cptJsonSchema is null.
      */
     @Test
@@ -174,12 +173,12 @@ public class TestUpdateCpt extends TestBaseServcie {
         logger.info("updateCpt result:");
         BeanUtil.print(response);
 
-        Assert.assertEquals(ErrorCode.CPT_JSON_SCHEMA_INVALID.getCode(),
+        Assert.assertEquals(ErrorCode.CPT_JSON_SCHEMA_NULL.getCode(),
             response.getErrorCode().intValue());
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： cptJsonSchema is invalid.
      */
     @Test
@@ -187,17 +186,33 @@ public class TestUpdateCpt extends TestBaseServcie {
 
         UpdateCptArgs updateCptArgs =
             TestBaseUtil.buildUpdateCptArgs(createWeIdResultWithSetAttr, cptBaseInfo);
-        updateCptArgs.setCptJsonSchema("xxxxxxxxx");
+
+        MockUp<CptController> mockTest = new MockUp<CptController>() {
+            @Mock
+            public Future<TransactionReceipt> updateCpt(
+                Uint256 cptId,
+                Address publisher,
+                StaticArray<Int256> intArray,
+                StaticArray<Bytes32> bytes32Array,
+                StaticArray<Bytes32> jsonSchemaArray,
+                Uint8 v,
+                Bytes32 r,
+                Bytes32 s) {
+                return null;
+            }
+        };
 
         ResponseData<CptBaseInfo> response = cptService.updateCpt(updateCptArgs);
         logger.info("updateCpt result:");
         BeanUtil.print(response);
 
+        mockTest.tearDown();
+
         Assert.assertEquals(ErrorCode.UNKNOW_ERROR.getCode(), response.getErrorCode().intValue());
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： cptJsonSchema too long.
      */
     @Test
@@ -211,13 +226,9 @@ public class TestUpdateCpt extends TestBaseServcie {
             value.append("x");
         }
 
-        JsonNode jsonNode = new ObjectMapper().readTree(TestData.schema);
-        ObjectNode objNode = (ObjectNode) jsonNode;
-        objNode.put("title", value.toString());
-        String afterStr =
-            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(objNode);
-
-        updateCptArgs.setCptJsonSchema(afterStr);
+        LinkedHashMap<String, Object> cptJsonSchema = TestBaseUtil.buildCptJsonSchema();
+        cptJsonSchema.put(JsonSchemaConstant.TITLE_KEY, value.toString());
+        updateCptArgs.setCptJsonSchema(cptJsonSchema);
 
         ResponseData<CptBaseInfo> response = cptService.updateCpt(updateCptArgs);
         logger.info("updateCpt result:");
@@ -228,7 +239,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： cptPublisher is blank.
      */
     @Test
@@ -246,7 +257,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： cptPublisher is invalid.
      */
     @Test
@@ -264,7 +275,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： cptPublisher is not exists and the private key does not match.
      */
     @Test
@@ -287,7 +298,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         BeanUtil.print(responseCpt);
     }
 
-    /** 
+    /**
      * case： cptPublisherPrivateKey is null.
      */
     @Test
@@ -306,7 +317,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： private Key is null.
      */
     @Test
@@ -325,7 +336,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： privateKey is invalid.
      */
     @Test
@@ -344,7 +355,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： privateKey is new privateKey.
      */
     @Test
@@ -364,7 +375,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： privateKey belongs to SDK.
      */
     @Test
@@ -383,7 +394,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： privateKey belongs to new WeIdentity DID.
      */
     @Test
@@ -402,15 +413,15 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： privateKey belongs to new WeIdentity DID , cptPublisher is a new WeId.
      * [TIP] update success,we will deal with the two issue.
-     *  
+     *
      */
     @Test
     public void testUpdateCptCase18() {
 
-        UpdateCptArgs updateCptArgs = 
+        UpdateCptArgs updateCptArgs =
             TestBaseUtil.buildUpdateCptArgs(createWeIdResult, cptBaseInfo);
         updateCptArgs.setCptPublisher(createWeIdNew.getWeId());
         updateCptArgs.setCptPublisherPrivateKey(createWeIdNew.getUserWeIdPrivateKey());
@@ -423,7 +434,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNotNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： privateKey is xxxxxxx.
      */
     @Test
@@ -442,7 +453,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： cptPublisher is not exists , but private key matching.
      */
     @Test
@@ -469,7 +480,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         BeanUtil.print(responseCpt);
     }
 
-    /** 
+    /**
      * case： mock an InterruptedException.
      */
     @Test
@@ -490,7 +501,7 @@ public class TestUpdateCpt extends TestBaseServcie {
     private ResponseData<CptBaseInfo> updateCptForMock(
         UpdateCptArgs updateCptArgs,
         MockUp<Future<?>> mockFuture) {
-        
+
         MockUp<CptController> mockTest = new MockUp<CptController>() {
             @Mock
             public Future<?> updateCpt(
@@ -515,7 +526,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         return response;
     }
 
-    /** 
+    /**
      * case： mock an TimeoutException.
      */
     @Test

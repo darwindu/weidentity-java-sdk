@@ -19,6 +19,8 @@
 
 package com.webank.weid.protocol.request;
 
+import java.util.LinkedHashMap;
+
 import lombok.Data;
 
 import com.webank.weid.protocol.base.WeIdPrivateKey;
@@ -49,7 +51,7 @@ public class CreateCredentialArgs {
     /**
      * Required: The claim data.
      */
-    private String claim;
+    private LinkedHashMap<String, Object> claim;
 
     /**
      * Required: The private key structure used for signing.

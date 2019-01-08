@@ -19,6 +19,8 @@
 
 package com.webank.weid.protocol.base;
 
+import java.util.LinkedHashMap;
+
 import lombok.Data;
 
 /**
@@ -62,7 +64,7 @@ public class Credential {
     /**
      * Required: The claim data.
      */
-    private String claim;
+    private LinkedHashMap<String, Object> claim;
 
     /**
      * Required: The signature of the Credential. Selective Disclosure is supported together with

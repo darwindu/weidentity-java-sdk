@@ -19,6 +19,8 @@
 
 package com.webank.weid.protocol.request;
 
+import java.util.LinkedHashMap;
+
 import lombok.Data;
 
 import com.webank.weid.protocol.base.WeIdPrivateKey;
@@ -39,7 +41,7 @@ public class UpdateCptArgs {
     /**
      * Required: the json schema content defined for this CPT.
      */
-    private String cptJsonSchema;
+    private LinkedHashMap<String, Object> cptJsonSchema;
 
     /**
      * Required: the WeIdentity DID of the publisher who register this CPT.

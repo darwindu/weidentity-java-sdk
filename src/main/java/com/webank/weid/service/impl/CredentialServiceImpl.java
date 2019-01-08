@@ -24,6 +24,7 @@ import java.math.BigInteger;
 import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,6 +52,7 @@ import com.webank.weid.service.BaseService;
 import com.webank.weid.util.CredentialUtils;
 import com.webank.weid.util.DateUtils;
 import com.webank.weid.util.JsonSchemaValidatorUtils;
+import com.webank.weid.util.JsonUtil;
 import com.webank.weid.util.SignatureUtils;
 import com.webank.weid.util.WeIdUtils;
 
@@ -79,7 +81,6 @@ public class CredentialServiceImpl extends BaseService implements CredentialServ
      */
     @Override
     public ResponseData<Credential> createCredential(CreateCredentialArgs args) {
-        ResponseData<Credential> responseData = new ResponseData<Credential>();
 
         try {
             ResponseData<Boolean> innerResponse = checkCreateCredentialArgsValidity(args, true);
@@ -98,6 +99,7 @@ public class CredentialServiceImpl extends BaseService implements CredentialServ
             result.setIssuranceDate(DateUtils.getCurrentTimeStamp());
             result.setExpirationDate(args.getExpirationDate());
             result.setClaim(args.getClaim());
+
             String rawData = CredentialUtils.getCredentialFields(result);
             String privateKey = args.getWeIdPrivateKey().getPrivateKey();
             Sign.SignatureData sigData = SignatureUtils.signMessage(rawData, privateKey);
@@ -106,12 +108,14 @@ public class CredentialServiceImpl extends BaseService implements CredentialServ
                     SignatureUtils
                         .base64Encode(SignatureUtils.simpleSignatureSerialization(sigData)),
                         WeIdConstant.UTF_8));
+
+            ResponseData<Credential> responseData = new ResponseData<Credential>();
             responseData.setResult(result);
+            return responseData;
         } catch (Exception e) {
             logger.error("Generate Credential failed due to system error. ", e);
             return new ResponseData<Credential>(null, ErrorCode.CREDENTIAL_ERROR);
         }
-        return responseData;
     }
 
     /**
@@ -174,8 +178,9 @@ public class CredentialServiceImpl extends BaseService implements CredentialServ
     }
 
     private ResponseData<Boolean> checkCreateCredentialArgsValidity(
-        CreateCredentialArgs args, boolean privateKeyRequired) {
-        ResponseData<Boolean> responseData = new ResponseData<Boolean>();
+        CreateCredentialArgs args,
+        boolean privateKeyRequired) {
+
         if (args == null) {
             logger.error("Credential argument null input error.");
             return new ResponseData<>(false, ErrorCode.ILLEGAL_INPUT);
@@ -202,7 +207,12 @@ public class CredentialServiceImpl extends BaseService implements CredentialServ
                 return new ResponseData<>(false, ErrorCode.CREDENTIAL_EXPIRE_DATE_ILLEGAL);
             }
 
-            String claim = args.getClaim();
+            LinkedHashMap cliamMap = args.getClaim();
+            if (cliamMap == null || cliamMap.isEmpty()) {
+                logger.error(ErrorCode.CREDENTIAL_CLAIM_NOT_EXISTS.getCodeDesc());
+                return new ResponseData<>(false, ErrorCode.CREDENTIAL_CLAIM_NOT_EXISTS);
+            }
+            String claim = JsonUtil.objToJsonStr(cliamMap);
             if (StringUtils.isEmpty(claim)) {
                 logger.error(ErrorCode.CREDENTIAL_CLAIM_NOT_EXISTS.getCodeDesc());
                 return new ResponseData<>(false, ErrorCode.CREDENTIAL_CLAIM_NOT_EXISTS);
@@ -214,6 +224,7 @@ public class CredentialServiceImpl extends BaseService implements CredentialServ
                 return new ResponseData<>(false, ErrorCode.CREDENTIAL_PRIVATE_KEY_NOT_EXISTS);
             }
 
+            ResponseData<Boolean> responseData = new ResponseData<Boolean>();
             responseData.setResult(true);
             return responseData;
         } catch (Exception e) {
@@ -285,16 +296,17 @@ public class CredentialServiceImpl extends BaseService implements CredentialServ
     }
 
     private ResponseData<Boolean> verifyCptFormat(Credential credential) {
-        ResponseData<Boolean> responseData = new ResponseData<Boolean>();
-        String claim = credential.getClaim();
-        Integer cptId = credential.getCptId();
-        Cpt cpt = cptService.queryCpt(cptId).getResult();
-        if (cpt == null) {
-            logger.error(ErrorCode.CREDENTIAL_CPT_NOT_EXISTS.getCodeDesc());
-            return new ResponseData<>(false, ErrorCode.CREDENTIAL_CPT_NOT_EXISTS);
-        }
-        String cptJsonSchema = cpt.getCptJsonSchema();
+
         try {
+            String claim = JsonUtil.objToJsonStr(credential.getClaim());
+            Integer cptId = credential.getCptId();
+            Cpt cpt = cptService.queryCpt(cptId).getResult();
+            if (cpt == null) {
+                logger.error(ErrorCode.CREDENTIAL_CPT_NOT_EXISTS.getCodeDesc());
+                return new ResponseData<>(false, ErrorCode.CREDENTIAL_CPT_NOT_EXISTS);
+            }
+            String cptJsonSchema = JsonUtil.objToJsonStr(cpt.getCptJsonSchema());
+
             if (!JsonSchemaValidatorUtils.isCptJsonSchemaValid(cptJsonSchema)) {
                 logger.error(ErrorCode.CPT_JSON_SCHEMA_INVALID.getCodeDesc());
                 return new ResponseData<>(false, ErrorCode.CPT_JSON_SCHEMA_INVALID);
@@ -303,6 +315,7 @@ public class CredentialServiceImpl extends BaseService implements CredentialServ
                 logger.error(ErrorCode.CREDENTIAL_CLAIM_DATA_ILLEGAL.getCodeDesc());
                 return new ResponseData<>(false, ErrorCode.CREDENTIAL_CLAIM_DATA_ILLEGAL);
             }
+            ResponseData<Boolean> responseData = new ResponseData<Boolean>();
             responseData.setResult(true);
             return responseData;
         } catch (Exception e) {

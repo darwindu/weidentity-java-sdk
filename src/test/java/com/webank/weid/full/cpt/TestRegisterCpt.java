@@ -20,13 +20,11 @@
 package com.webank.weid.full.cpt;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.Future;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import mockit.Mock;
 import mockit.MockUp;
 import org.bcos.web3j.abi.datatypes.Address;
@@ -43,11 +41,11 @@ import org.slf4j.LoggerFactory;
 import com.webank.weid.common.BeanUtil;
 import com.webank.weid.common.PasswordKey;
 import com.webank.weid.constant.ErrorCode;
+import com.webank.weid.constant.JsonSchemaConstant;
 import com.webank.weid.contract.CptController;
 import com.webank.weid.contract.CptController.RegisterCptRetLogEventResponse;
 import com.webank.weid.full.TestBaseServcie;
 import com.webank.weid.full.TestBaseUtil;
-import com.webank.weid.full.TestData;
 import com.webank.weid.protocol.base.CptBaseInfo;
 import com.webank.weid.protocol.request.RegisterCptArgs;
 import com.webank.weid.protocol.response.CreateWeIdDataResult;
@@ -106,7 +104,7 @@ public class TestRegisterCpt extends TestBaseServcie {
         Assert.assertNull(response.getResult());
     }
 
-    /** 
+    /**
      * case： cptJsonSchema is null.
      */
     @Test
@@ -119,23 +117,38 @@ public class TestRegisterCpt extends TestBaseServcie {
         logger.info("registerCpt result:");
         BeanUtil.print(response);
 
-        Assert.assertEquals(ErrorCode.CPT_JSON_SCHEMA_INVALID.getCode(),
+        Assert.assertEquals(ErrorCode.CPT_JSON_SCHEMA_NULL.getCode(),
             response.getErrorCode().intValue());
         Assert.assertNull(response.getResult());
     }
 
     /** 
-     * case： cptJsonSchema is invalid.
+     * case： Mock for ErrorCode.UNKNOW_ERROR.
      */
     @Test
     public void testRegisterCptCase4() {
 
         RegisterCptArgs registerCptArgs = TestBaseUtil.buildRegisterCptArgs(createWeId);
-        registerCptArgs.setCptJsonSchema("xxxxxxxxx");
+
+        MockUp<CptController> mockTest = new MockUp<CptController>() {
+            @Mock
+            public Future<TransactionReceipt> registerCpt(
+                Address publisher,
+                StaticArray<Int256> intArray,
+                StaticArray<Bytes32> bytes32Array,
+                StaticArray<Bytes32> jsonSchemaArray,
+                Uint8 v,
+                Bytes32 r,
+                Bytes32 s) {
+                return null;
+            }
+        };
 
         ResponseData<CptBaseInfo> response = cptService.registerCpt(registerCptArgs);
         logger.info("registerCpt result:");
         BeanUtil.print(response);
+
+        mockTest.tearDown();
 
         Assert.assertEquals(ErrorCode.UNKNOW_ERROR.getCode(), response.getErrorCode().intValue());
         Assert.assertNull(response.getResult());
@@ -154,13 +167,9 @@ public class TestRegisterCpt extends TestBaseServcie {
             value.append("x");
         }
 
-        JsonNode jsonNode = new ObjectMapper().readTree(TestData.schema);
-        ObjectNode objNode = (ObjectNode) jsonNode;
-        objNode.put("title", value.toString());
-        String afterStr =
-            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(objNode);
-
-        registerCptArgs.setCptJsonSchema(afterStr);
+        LinkedHashMap<String, Object> cptJsonSchema = TestBaseUtil.buildCptJsonSchema();
+        cptJsonSchema.put(JsonSchemaConstant.TITLE_KEY, value.toString());
+        registerCptArgs.setCptJsonSchema(cptJsonSchema);
 
         ResponseData<CptBaseInfo> response = cptService.registerCpt(registerCptArgs);
         logger.info("registerCpt result:");
@@ -462,7 +471,9 @@ public class TestRegisterCpt extends TestBaseServcie {
 
         mockTest.tearDown();
 
-        Assert.assertEquals(ErrorCode.UNKNOW_ERROR.getCode(), response.getErrorCode().intValue());
+        Assert.assertEquals(
+            ErrorCode.CPT_EVENT_LOG_NULL.getCode(),
+            response.getErrorCode().intValue());
         Assert.assertNull(response.getResult());
     }
 }
