@@ -430,40 +430,48 @@ public class CptServiceImpl extends BaseService implements CptService {
         return isMatch;
     }
 
-    private ResponseData<CptBaseInfo> validateUpdateCptArgs(UpdateCptArgs args) throws Exception {
+    private ResponseData<CptBaseInfo> validateUpdateCptArgs(
+        UpdateCptArgs updateCptArgs) throws Exception {
 
-        if (args == null) {
+        if (updateCptArgs == null) {
             logger.error("input UpdateCptArgs is null");
             return new ResponseData<>(null, ErrorCode.ILLEGAL_INPUT);
         }
 
-        if (!WeIdUtils.isWeIdValid(args.getCptPublisher())) {
-            logger.error("Input cpt publisher : {} is invalid.", args.getCptPublisher());
+        if (updateCptArgs.getCptId() == null) {
+            logger.error("input cptId is null");
+            return new ResponseData<>(null, ErrorCode.CPT_ID_NULL);
+        }
+
+        if (!WeIdUtils.isWeIdValid(updateCptArgs.getCptPublisher())) {
+            logger.error("Input cpt publisher : {} is invalid.", updateCptArgs.getCptPublisher());
             return new ResponseData<>(null, ErrorCode.WEID_INVALID);
         }
 
-        LinkedHashMap<String, Object> cptJsonSchemaMap = args.getCptJsonSchema();
+        LinkedHashMap<String, Object> cptJsonSchemaMap = updateCptArgs.getCptJsonSchema();
         if (cptJsonSchemaMap == null || cptJsonSchemaMap.isEmpty()) {
             logger.error("Input cpt json schema is null.");
             return new ResponseData<>(null, ErrorCode.CPT_JSON_SCHEMA_NULL);
         }
         String cptJsonSchema = JsonUtil.objToJsonStr(cptJsonSchemaMap);
         if (!JsonSchemaValidatorUtils.isCptJsonSchemaValid(cptJsonSchema)) {
-            logger.error("Input cpt json schema : {} is in valid.", args.getCptJsonSchema());
+            logger.error(
+                "Input cpt json schema : {} is in valid.",
+                updateCptArgs.getCptJsonSchema());
             return new ResponseData<>(null, ErrorCode.CPT_JSON_SCHEMA_INVALID);
         }
 
-        if (null == args.getCptPublisherPrivateKey()
-            || StringUtils.isEmpty(args.getCptPublisherPrivateKey().getPrivateKey())) {
+        if (null == updateCptArgs.getCptPublisherPrivateKey()
+            || StringUtils.isEmpty(updateCptArgs.getCptPublisherPrivateKey().getPrivateKey())) {
             logger.error(
                 "Input cpt publisher private key : {} is in valid.",
-                args.getCptPublisherPrivateKey()
+                updateCptArgs.getCptPublisherPrivateKey()
             );
             return new ResponseData<>(null, ErrorCode.WEID_PRIVATEKEY_INVALID);
         }
 
-        if (!validatePrivateKeyWeIdMatches(args.getCptPublisherPrivateKey(),
-            args.getCptPublisher())) {
+        if (!validatePrivateKeyWeIdMatches(updateCptArgs.getCptPublisherPrivateKey(),
+            updateCptArgs.getCptPublisher())) {
             return new ResponseData<>(null, ErrorCode.WEID_PRIVATEKEY_DOES_NOT_MATCH);
         }
         return new ResponseData<>();

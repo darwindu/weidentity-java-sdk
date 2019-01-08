@@ -50,6 +50,11 @@ public enum ErrorCode {
     CPT_PUBLISHER_NOT_EXIST(500303, "cpt publisher does not exist"),
 
     /**
+     * cptId is null.
+     */
+    CPT_ID_NULL(500304, "cptId is null"),
+
+    /**
      * cpt event log is null.
      */
     CPT_EVENT_LOG_NULL(500304, "cpt event log is null."),

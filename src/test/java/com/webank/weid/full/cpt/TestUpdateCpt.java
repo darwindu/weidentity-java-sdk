@@ -119,7 +119,7 @@ public class TestUpdateCpt extends TestBaseServcie {
         logger.info("updateCpt result:");
         BeanUtil.print(response);
 
-        Assert.assertEquals(ErrorCode.UNKNOW_ERROR.getCode(), response.getErrorCode().intValue());
+        Assert.assertEquals(ErrorCode.CPT_ID_NULL.getCode(), response.getErrorCode().intValue());
         Assert.assertNull(response.getResult());
     }
 
