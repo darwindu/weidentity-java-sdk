@@ -24,7 +24,7 @@ import java.math.BigInteger;
 import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -207,7 +207,7 @@ public class CredentialServiceImpl extends BaseService implements CredentialServ
                 return new ResponseData<>(false, ErrorCode.CREDENTIAL_EXPIRE_DATE_ILLEGAL);
             }
 
-            LinkedHashMap cliamMap = args.getClaim();
+            HashMap<String, Object> cliamMap = args.getClaim();
             if (cliamMap == null || cliamMap.isEmpty()) {
                 logger.error(ErrorCode.CREDENTIAL_CLAIM_NOT_EXISTS.getCodeDesc());
                 return new ResponseData<>(false, ErrorCode.CREDENTIAL_CLAIM_NOT_EXISTS);

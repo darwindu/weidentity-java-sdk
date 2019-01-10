@@ -19,7 +19,7 @@
 
 package com.webank.weid.protocol.base;
 
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 
 import lombok.Data;
 
@@ -39,7 +39,7 @@ public class Cpt {
     /**
      * The cpt json schema.
      */
-    private LinkedHashMap<String, Object> cptJsonSchema;
+    private HashMap<String, Object> cptJsonSchema;
 
     /**
      * The meta data.

@@ -59,7 +59,7 @@ public final class CredentialUtils {
                 + WeIdConstant.PIPELINE
                 + arg.getExpirationDate().toString()
                 + WeIdConstant.PIPELINE
-                + arg.getClaim();
+                + JsonUtil.objToJsonStr(arg.getClaim());
         return rawData;
     }
 
