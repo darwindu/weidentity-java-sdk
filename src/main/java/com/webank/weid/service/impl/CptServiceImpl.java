@@ -19,10 +19,12 @@
 
 package com.webank.weid.service.impl;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -41,7 +43,10 @@ import org.bcos.web3j.abi.datatypes.generated.Uint8;
 import org.bcos.web3j.crypto.Keys;
 import org.bcos.web3j.crypto.Sign;
 import org.bcos.web3j.crypto.Sign.SignatureData;
+import org.bcos.web3j.protocol.core.methods.response.EthGetTransactionReceipt;
+import org.bcos.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.bcos.web3j.protocol.core.methods.response.TransactionReceipt;
+import org.bcos.web3j.protocol.exceptions.TransactionTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -181,6 +186,80 @@ public class CptServiceImpl extends BaseService implements CptService {
         } catch (TimeoutException e) {
             logger.error("[registerCpt] register cpt failed due to transaction timeout. ", e);
             return new ResponseData<>(null, ErrorCode.TRANSACTION_TIMEOUT);
+        } catch (Exception e) {
+            logger.error("[registerCpt] register cpt failed due to unknown error. ", e);
+            return new ResponseData<>(null, ErrorCode.UNKNOW_ERROR);
+        }
+    }
+
+    private static final int SLEEP_DURATION = 1500;
+    private static final int ATTEMPTS = 5;
+
+    /**
+     * This is used to register a new CPT to the blockchain.
+     *
+     * @param args the args
+     * @return the response data
+     */
+    public ResponseData<CptBaseInfo> registerCpt(CptMapArgs args, String hexValue) {
+
+        try {
+            if (args == null) {
+                logger.error("[registerCpt]input CptMapArgs is null");
+                return new ResponseData<>(null, ErrorCode.ILLEGAL_INPUT);
+            }
+            WeIdAuthentication weIdAuthentication = args.getWeIdAuthentication();
+            if (weIdAuthentication == null) {
+                logger.error("Input cpt weIdAuthentication is invalid.");
+                return new ResponseData<>(null, ErrorCode.WEID_AUTHORITY_INVALID);
+            }
+
+            String weId = weIdAuthentication.getWeId();
+            if (!WeIdUtils.isWeIdValid(weId)) {
+                logger.error("Input cpt publisher : {} is invalid.", weId);
+                return new ResponseData<>(null, ErrorCode.WEID_INVALID);
+            }
+            Map<String, Object> cptJsonSchemaMap = args.getCptJsonSchema();
+            if (cptJsonSchemaMap == null || cptJsonSchemaMap.isEmpty()) {
+                logger.error("Input cpt json schema is null.");
+                return new ResponseData<>(null, ErrorCode.CPT_JSON_SCHEMA_NULL);
+            }
+            String cptJsonSchema = JsonUtil.objToJsonStr(cptJsonSchemaMap);
+            if (!JsonSchemaValidatorUtils.isCptJsonSchemaValid(cptJsonSchema)) {
+                logger.error("Input cpt json schema : {} is invalid.", cptJsonSchemaMap);
+                return new ResponseData<>(null, ErrorCode.CPT_JSON_SCHEMA_INVALID);
+            }
+            //无法校验weid和私钥
+
+            EthSendTransaction ethSendTransaction = web3j.ethSendRawTransaction(hexValue).send();
+            if (ethSendTransaction.hasError()) {
+                throw new RuntimeException("Error processing transaction request: "
+                    + ethSendTransaction.getError().getMessage());
+            }
+            // poll for
+            // transaction response via org.web3j.protocol.Web3j.ethGetTransactionReceipt(<txHash>)
+            String transactionHash = ethSendTransaction.getTransactionHash();
+            TransactionReceipt transactionReceipt =
+                getTransactionReceipt(transactionHash, SLEEP_DURATION, ATTEMPTS);
+
+            List<RegisterCptRetLogEventResponse> event = CptController.getRegisterCptRetLogEvents(
+                transactionReceipt
+            );
+            if (CollectionUtils.isEmpty(event)) {
+                logger.error("[registerCpt] event is empty");
+                return new ResponseData<>(null, ErrorCode.CPT_EVENT_LOG_NULL);
+            }
+
+            return this.getResultByResolveEvent(
+                event.get(0).retCode,
+                event.get(0).cptId,
+                event.get(0).cptVersion);
+        } catch (InterruptedException e) {
+            logger.error(
+                "[registerCpt] register cpt failed due to transaction execution error. ",
+                e
+            );
+            return new ResponseData<>(null, ErrorCode.TRANSACTION_EXECUTE_ERROR);
         } catch (Exception e) {
             logger.error("[registerCpt] register cpt failed due to unknown error. ", e);
             return new ResponseData<>(null, ErrorCode.UNKNOW_ERROR);
@@ -392,6 +471,40 @@ public class CptServiceImpl extends BaseService implements CptService {
             rsvSignature.getR(),
             rsvSignature.getS()
         ).get(WeIdConstant.TRANSACTION_RECEIPT_TIMEOUT, TimeUnit.SECONDS);
+    }
+
+    private static TransactionReceipt getTransactionReceipt(
+        String transactionHash, int sleepDuration, int attempts)
+        throws IOException, InterruptedException, TransactionTimeoutException {
+
+        Optional<TransactionReceipt> receiptOptional =
+            sendTransactionReceiptRequest(transactionHash);
+        int sumTime = 0;
+        for (int i = 0; i < attempts; i++) {
+
+            if (!receiptOptional.isPresent()) {
+                Thread.sleep((long)sleepDuration);
+                sumTime += sleepDuration;
+                receiptOptional = sendTransactionReceiptRequest(transactionHash);
+            } else {
+                return receiptOptional.get();
+            }
+        }
+
+        throw new TransactionTimeoutException("Transaction receipt was not generated after "
+            + ((sumTime) / 1000
+            + " seconds for transaction: " + transactionHash));
+    }
+
+    private static Optional<TransactionReceipt> sendTransactionReceiptRequest(
+        String transactionHash) throws IOException {
+        EthGetTransactionReceipt transactionReceipt =
+            web3j.ethGetTransactionReceipt(transactionHash).send();
+        if (transactionReceipt.hasError()) {
+            throw new RuntimeException("Error processing request: "
+                + transactionReceipt.getError().getMessage());
+        }
+        return transactionReceipt.getTransactionReceipt();
     }
 
     private StaticArray<Int256> getParamCreated() {

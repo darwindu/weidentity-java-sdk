@@ -40,6 +40,7 @@ import com.webank.weid.constant.WeIdConstant;
 import com.webank.weid.exception.InitWeb3jException;
 import com.webank.weid.exception.LoadContractException;
 import com.webank.weid.exception.PrivateKeyIllegalException;
+import com.webank.weid.protocol.response.ResponseData;
 
 /**
  * The BaseService for other RPC classes.
@@ -54,7 +55,7 @@ public abstract class BaseService {
 
     private static Credentials credentials;
 
-    private static Web3j web3j;
+    public static Web3j web3j;
 
     static {
         context = new ClassPathXmlApplicationContext("applicationContext.xml");
@@ -204,5 +205,16 @@ public abstract class BaseService {
             throw new LoadContractException();
         }
         return (Contract) contract;
+    }
+
+    /**
+     * get block limit.
+     * @return
+     */
+    public static ResponseData<BigInteger> getBlockLimit() {
+
+        ResponseData<BigInteger> response = new ResponseData<BigInteger>();
+        response.setResult(getWeb3j().getBlockNumberCache());
+        return response;
     }
 }

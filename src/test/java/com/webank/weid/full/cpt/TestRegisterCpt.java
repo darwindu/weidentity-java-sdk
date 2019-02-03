@@ -20,19 +20,42 @@
 package com.webank.weid.full.cpt;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigInteger;
+import java.security.Key;
+import java.security.KeyStore;
+import java.security.SecureRandom;
+import java.security.interfaces.ECPrivateKey;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.Future;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.github.fge.jackson.JsonLoader;
+import com.google.common.base.Splitter;
 import mockit.Mock;
 import mockit.MockUp;
+import org.bcos.web3j.abi.FunctionEncoder;
 import org.bcos.web3j.abi.datatypes.Address;
+import org.bcos.web3j.abi.datatypes.Function;
 import org.bcos.web3j.abi.datatypes.StaticArray;
+import org.bcos.web3j.abi.datatypes.Type;
 import org.bcos.web3j.abi.datatypes.generated.Bytes32;
 import org.bcos.web3j.abi.datatypes.generated.Int256;
 import org.bcos.web3j.abi.datatypes.generated.Uint8;
+import org.bcos.web3j.crypto.Credentials;
+import org.bcos.web3j.crypto.ECKeyPair;
+import org.bcos.web3j.crypto.Sign.SignatureData;
+import org.bcos.web3j.crypto.TransactionEncoder;
+import org.bcos.web3j.protocol.core.methods.request.RawTransaction;
 import org.bcos.web3j.protocol.core.methods.response.TransactionReceipt;
+import org.bcos.web3j.tx.TransactionConstant;
+import org.bouncycastle.util.encoders.Hex;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -42,15 +65,21 @@ import com.webank.weid.common.BeanUtil;
 import com.webank.weid.common.PasswordKey;
 import com.webank.weid.constant.ErrorCode;
 import com.webank.weid.constant.JsonSchemaConstant;
+import com.webank.weid.constant.WeIdConstant;
 import com.webank.weid.contract.CptController;
 import com.webank.weid.contract.CptController.RegisterCptRetLogEventResponse;
 import com.webank.weid.full.TestBaseServcie;
 import com.webank.weid.full.TestBaseUtil;
 import com.webank.weid.protocol.base.CptBaseInfo;
+import com.webank.weid.protocol.base.WeIdAuthentication;
 import com.webank.weid.protocol.request.CptMapArgs;
 import com.webank.weid.protocol.request.CptStringArgs;
 import com.webank.weid.protocol.response.CreateWeIdDataResult;
 import com.webank.weid.protocol.response.ResponseData;
+import com.webank.weid.protocol.response.RsvSignature;
+import com.webank.weid.util.DataTypetUtils;
+import com.webank.weid.util.JsonUtil;
+import com.webank.weid.util.SignatureUtils;
 import com.webank.weid.util.WeIdUtils;
 
 /**
@@ -562,6 +591,143 @@ public class TestRegisterCpt extends TestBaseServcie {
             ErrorCode.WEID_AUTHORITY_INVALID.getCode(),
             response.getErrorCode().intValue());
         Assert.assertNull(response.getResult());
+    }
+
+    @Test
+    public void testRegisterCptCase28() throws Exception {
+
+        KeyStore ks = KeyStore.getInstance("JKS");
+        InputStream ksInputStream =
+            TestRegisterCpt.class.getClassLoader().getResourceAsStream("tb.jks");
+        ks.load(ksInputStream, "123456".toCharArray());
+        Key key = ks.getKey("ec", "123456".toCharArray());
+        ECPrivateKey privateKey = (ECPrivateKey) key;
+        Credentials credentials = Credentials.create(ECKeyPair.create(privateKey.getS()));
+
+        Random r = new SecureRandom();
+        BigInteger nonce = new BigInteger(250, r);
+        System.out.println("==nonce:" + nonce);
+
+        JsonNode jsonNode = JsonLoader.fromResource("/cpt.json");
+        String jsonSchema = jsonNode.toString();
+        Map<String, Object> jsonSchemaMap =
+            (Map<String, Object>) JsonUtil.jsonStrToObj(new HashMap<String, Object>(), jsonSchema);
+        String data =
+            createFuntionRegisterCpt(jsonSchemaMap, credentials.getEcKeyPair().getPrivateKey());
+
+        BigInteger blockLimit = web3j.getBlockNumberCache();
+        RawTransaction rawTransaction  = RawTransaction.createTransaction(
+            nonce,
+            new BigInteger("99999999999"),
+            new BigInteger("99999999999"),
+            blockLimit,
+            "0xd7a617780dd61be1c599f2462667a26cbb9fd6bf",
+            new BigInteger("0"),
+            data,
+            TransactionConstant.callType,
+            false);
+
+        byte[] signedMessage = TransactionEncoder.signMessage(rawTransaction, credentials);
+        System.out.println("====signedMessage:" + new String(signedMessage, "UTF-8"));
+        String hexValue = Hex.toHexString(signedMessage);
+        System.out.println("====hexValue:" + hexValue);
+
+        WeIdAuthentication weIdAuthentication = new WeIdAuthentication();
+        weIdAuthentication.setWeId(jsonSchemaMap.get("weId").toString());
+
+        CptMapArgs args = new CptMapArgs();
+        args.setWeIdAuthentication(weIdAuthentication);
+        args.setCptJsonSchema((HashMap<String, Object>)jsonSchemaMap.get("cptJsonSchema"));
+
+        ResponseData<CptBaseInfo> response = cptService.registerCpt(args, hexValue);
+        System.out.println("====response:" + JsonUtil.objToJsonStr(response));
+
+        Assert.assertEquals(ErrorCode.SUCCESS.getCode(), response.getErrorCode().intValue());
+        Assert.assertNotNull(response.getResult());
+
+        Assert.assertNotNull("hellworld");
+    }
+
+    private String createFuntionRegisterCpt(
+        Map<String, Object> map,
+        BigInteger privateKey) throws Exception {
+
+        String weId = map.get("weId").toString();
+        Map<String, Object> cptJsonSchema = (Map<String, Object>) map.get("cptJsonSchema");
+        String cptJsonSchemaNew = this.cptSchemaToString(cptJsonSchema);
+        RsvSignature rsvSignature = sign(
+            weId,
+            cptJsonSchemaNew,
+            privateKey.toString());
+
+        StaticArray<Bytes32> bytes32Array = DataTypetUtils.stringArrayToBytes32StaticArray(
+            new String[WeIdConstant.STRING_ARRAY_LENGTH]
+        );
+
+
+        List<Type> inputParameters = Arrays.<Type>asList(
+            new Address(WeIdUtils.convertWeIdToAddress(weId)),
+            this.getParamCreated(),
+            bytes32Array,
+            this.getParamJsonSchema(cptJsonSchemaNew),
+            rsvSignature.getV(),
+            rsvSignature.getR(),
+            rsvSignature.getS());
+
+        Function function = new Function("registerCpt", inputParameters, Collections.emptyList());
+        return FunctionEncoder.encode(function);
+    }
+
+    private RsvSignature sign(
+        String cptPublisher,
+        String jsonSchema,
+        String privateKey) throws Exception {
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(cptPublisher);
+        sb.append("|");
+        sb.append(jsonSchema);
+        SignatureData signatureData =
+            SignatureUtils.signMessage(sb.toString(), privateKey);
+
+        Uint8 v = DataTypetUtils.intToUnt8(Integer.valueOf(signatureData.getV()));
+        Bytes32 r = DataTypetUtils.bytesArrayToBytes32(signatureData.getR());
+        Bytes32 s = DataTypetUtils.bytesArrayToBytes32(signatureData.getS());
+
+        RsvSignature rsvSignature = new RsvSignature();
+        rsvSignature.setV(v);
+        rsvSignature.setR(r);
+        rsvSignature.setS(s);
+        return rsvSignature;
+    }
+
+    private String cptSchemaToString(Map<String, Object> cptJsonSchema) throws Exception {
+
+        Map<String, Object> cptJsonSchemaNew = new HashMap<String, Object>();
+        cptJsonSchemaNew.put(JsonSchemaConstant.SCHEMA_KEY, JsonSchemaConstant.SCHEMA_VALUE);
+        cptJsonSchemaNew.put(JsonSchemaConstant.TYPE_KEY, JsonSchemaConstant.DATE_TYPE_OBJECT);
+        cptJsonSchemaNew.putAll(cptJsonSchema);
+        return JsonUtil.objToJsonStr(cptJsonSchemaNew);
+    }
+
+    private StaticArray<Int256> getParamCreated() {
+
+        long[] longArray = new long[WeIdConstant.LONG_ARRAY_LENGTH];
+        long created = System.currentTimeMillis();
+        longArray[1] = created;
+        return DataTypetUtils.longArrayToInt256StaticArray(longArray);
+    }
+
+    private StaticArray<Bytes32> getParamJsonSchema(String cptJsonSchemaNew) {
+
+        List<String> stringList = Splitter
+            .fixedLength(WeIdConstant.BYTES32_FIXED_LENGTH)
+            .splitToList(cptJsonSchemaNew);
+        String[] jsonSchemaArray = new String[WeIdConstant.JSON_SCHEMA_ARRAY_LENGTH];
+        for (int i = 0; i < stringList.size(); i++) {
+            jsonSchemaArray[i] = stringList.get(i);
+        }
+        return DataTypetUtils.stringArrayToBytes32StaticArray(jsonSchemaArray);
     }
 
 }
